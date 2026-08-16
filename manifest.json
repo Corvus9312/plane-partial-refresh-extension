@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Plane 工作項目局部刷新小工具",
+  "version": "2.1",
+  "description": "在 Plane (app.plane.so) 的工作項目頁加一個懸浮控制條,可一鍵、定時、或切回分頁時觸發 Plane 自身路由重新抓取最新資料並重新渲染,不整頁 reload。Chrome / Firefox 通用。",
+  "permissions": ["storage"],
+  "host_permissions": ["*://app.plane.so/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://app.plane.so/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "plane-partial-refresh@local.tool"
+    }
+  }
+}
