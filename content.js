@@ -15,11 +15,23 @@
     script.textContent = `(function () {
       try {
         const r = window.__reactRouterDataRouter;
-        if (!r || typeof r.navigate !== "function" || !r.state) {
+        if (!r) {
           console.warn("[plane-partial-refresh] 找不到 router,改用整頁刷新 fallback");
           location.reload();
           return;
         }
+        if (typeof r.revalidate === "function") {
+          // 直接重新跑目前頁面的資料載入,不換頁,不會有跳走再跳回時的閃爍或中繼頁 404
+          console.log("[plane-partial-refresh] 使用 revalidate() 重新整理,沒有換頁");
+          r.revalidate();
+          return;
+        }
+        if (typeof r.navigate !== "function" || !r.state) {
+          console.warn("[plane-partial-refresh] 找不到可用的 router API,改用整頁刷新 fallback");
+          location.reload();
+          return;
+        }
+        console.log("[plane-partial-refresh] 沒有 revalidate(),退回跳走再跳回的做法");
         const originalPath = r.state.location.pathname + r.state.location.search;
         const m = r.state.location.pathname.match(/^(\\/[^\\/]+\\/projects\\/[0-9a-fA-F-]+\\/)/);
         const awayPath = (m && m[1] !== r.state.location.pathname) ? m[1] : "/";

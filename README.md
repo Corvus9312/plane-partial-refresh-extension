@@ -47,6 +47,20 @@ Plane 是用 React + React Router 寫的 SPA。實測發現:
 5. 「定時刷新」跟「回來自動刷新」可以同時開,互不衝突
 6. 按 ➖ 可以把控制條收起來,收起後右下角會留一個小圓按鈕,點它可以再打開
 
+## 打包
+
+要產生可以直接上傳到 AMO(Firefox 自我發布簽署)或 Chrome 開發者後台的 `.zip`,在專案根目錄跑:
+
+```bash
+powershell -ExecutionPolicy Bypass -File package.ps1
+```
+
+會自動讀取 `manifest.json` 裡的版號,輸出到 `web-ext-artifacts\plane-partial-refresh-extension-<版本>.zip`,
+內容只包含 `manifest.json`、`content.js`、`README.md`、`LICENSE`(排除 `.git`、`node_modules`、
+`web-ext-artifacts` 等開發用檔案),`manifest.json` 會放在 zip 根目錄,符合上傳要求。
+
+改版號、加新檔案都不用改這支腳本,直接重跑即可。
+
 ## 注意事項
 
 * 這個做法依賴 Plane 內部一個叫 `__reactRouterDataRouter` 的物件,是我們實際連進你的 Plane
