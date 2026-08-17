@@ -92,9 +92,20 @@
 
   <hr>
 
-  <label class="row" title="從別的視窗/分頁切回 Plane 分頁時自動刷新一次；10 秒內不會重複觸發">
+  <label class="row">
     <input type="checkbox" id="focusEnabled">
     <span>回來自動刷新</span>
+  </label>
+  <label class="row">
+    <span>距上次刷新至少</span>
+    <select id="minGapSeconds">
+      <option value="30">30 秒</option>
+      <option value="60" selected>1 分</option>
+      <option value="180">3 分</option>
+      <option value="300">5 分</option>
+      <option value="600">10 分</option>
+    </select>
+    <span>才會在回來時再刷</span>
   </label>
 
   <div class="saved" id="status" aria-live="polite"></div>

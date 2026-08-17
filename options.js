@@ -5,6 +5,7 @@
   const autoEnabledEl = document.getElementById("autoEnabled");
   const autoSecondsEl = document.getElementById("autoSeconds");
   const focusEnabledEl = document.getElementById("focusEnabled");
+  const minGapSecondsEl = document.getElementById("minGapSeconds");
   const statusEl = document.getElementById("status");
 
   let saveTimer = null;
@@ -22,7 +23,10 @@
     chrome.storage.local.set(
       {
         [AUTO_REFRESH_KEY]: { enabled: autoEnabledEl.checked, seconds },
-        [FOCUS_REFRESH_KEY]: { enabled: focusEnabledEl.checked },
+        [FOCUS_REFRESH_KEY]: {
+          enabled: focusEnabledEl.checked,
+          minGapSeconds: parseInt(minGapSecondsEl.value, 10) || 60,
+        },
       },
       flashSaved
     );
@@ -37,10 +41,13 @@
     }
     if (focus) {
       focusEnabledEl.checked = !!focus.enabled;
+      const gap = focus.minGapSeconds || focus.minAwaySeconds;
+      if (gap) minGapSecondsEl.value = String(gap);
     }
   });
 
   autoEnabledEl.addEventListener("change", save);
   autoSecondsEl.addEventListener("change", save);
   focusEnabledEl.addEventListener("change", save);
+  minGapSecondsEl.addEventListener("change", save);
 })();

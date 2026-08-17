@@ -1,7 +1,7 @@
 (function () {
   const AUTO_REFRESH_KEY = "autoRefresh";
   const FOCUS_REFRESH_KEY = "focusRefresh";
-  const MIN_FOCUS_REFRESH_GAP_MS = 10000; // 10 秒內重複切回來,不重複觸發,避免洗版
+  const DEFAULT_MIN_GAP_SECONDS = 60;
 
   // 舊版懸浮控制條若還留在頁面上,清掉
   const legacy = document.getElementById("pane_partial_refresh_widget");
@@ -165,14 +165,17 @@
     })();`;
     document.documentElement.appendChild(script);
     script.remove();
+    lastRefreshAt = Date.now();
   }
 
   // ---------- 設定(全域,在擴充套件選項頁調整) ----------
   let autoEnabled = false;
   let autoSeconds = 300;
   let focusEnabled = false;
+  let minGapSeconds = DEFAULT_MIN_GAP_SECONDS;
   let timerId = null;
-  let lastFocusRefreshAt = 0;
+  let lastRefreshAt = 0;
+  let wasAway = false;
 
   function stopTimer() {
     if (timerId) {
@@ -209,6 +212,7 @@
         autoEnabled = !!(auto && auto.enabled);
         autoSeconds = (auto && auto.seconds) || 300;
         focusEnabled = !!(focus && focus.enabled);
+        minGapSeconds = (focus && (focus.minGapSeconds || focus.minAwaySeconds)) || DEFAULT_MIN_GAP_SECONDS;
         applyAutoRefresh();
       });
     } catch (e) {}
@@ -225,19 +229,29 @@
     if (changes[FOCUS_REFRESH_KEY]) {
       const focus = changes[FOCUS_REFRESH_KEY].newValue;
       focusEnabled = !!(focus && focus.enabled);
+      minGapSeconds = (focus && (focus.minGapSeconds || focus.minAwaySeconds)) || DEFAULT_MIN_GAP_SECONDS;
     }
   });
+
+  function markLeft() {
+    wasAway = true;
+  }
 
   function maybeRefreshOnReturn() {
     if (!focusEnabled) return;
     if (document.hidden) return;
+    if (!wasAway) return;
+    wasAway = false;
     const now = Date.now();
-    if (now - lastFocusRefreshAt < MIN_FOCUS_REFRESH_GAP_MS) return;
-    lastFocusRefreshAt = now;
+    if (now - lastRefreshAt < minGapSeconds * 1000) return;
     triggerPartialRefresh();
   }
 
-  document.addEventListener("visibilitychange", maybeRefreshOnReturn);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) markLeft();
+    else maybeRefreshOnReturn();
+  });
+  window.addEventListener("blur", markLeft);
   window.addEventListener("focus", maybeRefreshOnReturn);
 
   // 工具列圖示點擊 → background 轉送訊息到這裡

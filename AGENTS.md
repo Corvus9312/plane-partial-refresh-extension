@@ -22,6 +22,7 @@
 - `background.js` — 點圖示時對 Plane 分頁 `tabs.sendMessage({ type: "PPR_REFRESH" })`;
   非 Plane 頁則 `openOptionsPage()`。
 - `options.html` / `options.js` — 設定頁。storage key:`autoRefresh`、`focusRefresh`(全域)。
+  `focusRefresh.minGapSeconds` 預設 60,距上次刷新未滿這秒數,回來時不自動刷。
 - `README.md` — 安裝 / 使用 / 打包說明。含 `.zip` / `.xpi` 用法;上 Release 時也要寫。
 - `package.ps1` — 建置腳本。產出 `.zip`;`.xpi` 需另經 AMO 簽署。
 - `LICENSE`
@@ -66,7 +67,7 @@ Release body 建議至少包含上述 zip / xpi 使用步驟，不要只貼變�
 2. 點工具列擴充套件圖示 → 觸發局部刷新(Network 有重新打 API,盡不整頁重載 JS/CSS)
 3. 非 Plane 分頁點圖示 → 應打開選項頁
 4. 選項頁開關「定時刷新」後,Plane 分頁會依間隔自動刷新;改間隔會重設節奏
-5. 「回來自動刷新」勾選後切分頁再切回來會觸發一次,10 秒內再切一次**不會**重複觸發
+5. 「回來自動刷新」勾選後:切走再回來時,若距上次刷新(含手動/定時)未滿設定秒數(預設 60)**不該**刷新;滿了才刷一次
 6. reload 分頁後選項設定仍生效(全域 `chrome.storage.local`)
 7. 抓不到 store / router 時要能 fallback,不能拋錯卡死
 
