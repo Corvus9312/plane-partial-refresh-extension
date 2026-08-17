@@ -1,13 +1,29 @@
 {
   "manifest_version": 3,
   "name": "Plane 工作項目局部刷新小工具",
-  "version": "2.3",
-  "description": "在 Plane (app.plane.so) 的工作項目頁加一個懸浮控制條,可一鍵、定時、或切回分頁時觸發 Plane 自身路由重新抓取最新資料並重新渲染,不整頁 reload。Chrome / Firefox 通用。",
+  "version": "2.4",
+  "description": "在 Plane (app.plane.so) 點工具列圖示即可局部刷新工作項目資料；可在擴充套件選項頁設定定時 / 回來自動刷新。不整頁 reload。Chrome / Firefox 通用。",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "局部刷新 Plane 工作項目",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "permissions": ["storage"],
   "host_permissions": ["*://app.plane.so/*"],
