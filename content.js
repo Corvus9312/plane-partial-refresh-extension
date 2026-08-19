@@ -63,8 +63,79 @@
         return { workspaceSlug: m[1], projectId: m[2], section: m[3] || "", entityId: m[4] || "" };
       }
 
-      async function softRefreshViaStore(rootStore) {
-        const parsed = parseProjectPath(location.pathname);
+      function parseBrowseWorkItem(pathname) {
+        const m = pathname.match(/^\\/([^\\/]+)\\/browse\\/([^\\/]+?)\\/?$/);
+        if (!m) return null;
+        const ident = m[2];
+        const dash = ident.lastIndexOf("-");
+        if (dash <= 0) return null;
+        return {
+          workspaceSlug: m[1],
+          projectIdentifier: ident.slice(0, dash),
+          sequenceId: ident.slice(dash + 1),
+        };
+      }
+
+      function eachIssueInMap(map, fn) {
+        if (!map) return;
+        if (typeof map.forEach === "function") {
+          map.forEach((v, k) => fn(v, k));
+          return;
+        }
+        for (const k of Object.keys(map)) fn(map[k], k);
+      }
+
+      async function refreshIssueDetails(rootStore, parsed, browse) {
+        const issueRoot = rootStore.issue;
+        if (!issueRoot) return false;
+        const detail = issueRoot.issueDetail;
+        if (!detail) return false;
+
+        const seen = new Set();
+        const jobs = [];
+
+        function queueFetch(detailStore, workspaceSlug, projectId, issueId) {
+          if (!detailStore || !workspaceSlug || !projectId || !issueId) return;
+          if (seen.has(issueId)) return;
+          if (typeof detailStore.fetchIssue !== "function") return;
+          seen.add(issueId);
+          jobs.push(Promise.resolve(detailStore.fetchIssue(workspaceSlug, projectId, issueId)));
+        }
+
+        const peek = detail.peekIssue;
+        if (peek) queueFetch(detail, peek.workspaceSlug, peek.projectId, peek.issueId);
+
+        const epicDetail = issueRoot.epicDetail;
+        if (epicDetail && epicDetail.peekIssue) {
+          const p = epicDetail.peekIssue;
+          queueFetch(epicDetail, p.workspaceSlug, p.projectId, p.issueId);
+        }
+
+        if (browse && typeof detail.fetchIssueWithIdentifier === "function") {
+          jobs.push(Promise.resolve(
+            detail.fetchIssueWithIdentifier(browse.workspaceSlug, browse.projectIdentifier, browse.sequenceId)
+          ));
+        }
+
+        if (parsed && parsed.section === "issues" && parsed.entityId) {
+          queueFetch(detail, parsed.workspaceSlug, parsed.projectId, parsed.entityId);
+        }
+
+        const workspaceSlug = (parsed && parsed.workspaceSlug) || (browse && browse.workspaceSlug);
+        const fallbackProjectId = parsed && parsed.projectId;
+        eachIssueInMap(issueRoot.issues && issueRoot.issues.issuesMap, (it) => {
+          if (!it || !it.id) return;
+          if (it.description_html === undefined || it.description_html === null) return;
+          queueFetch(detail, workspaceSlug, it.project_id || fallbackProjectId, it.id);
+        });
+
+        if (!jobs.length) return false;
+        log("refresh issue details:", seen.size, "item(s)");
+        await Promise.allSettled(jobs);
+        return true;
+      }
+
+      async function refreshIssueList(rootStore, parsed) {
         if (!parsed) return false;
         const { workspaceSlug, projectId, section, entityId } = parsed;
         const issue = rootStore.issue;
@@ -109,6 +180,14 @@
           return true;
         }
         return false;
+      }
+
+      async function softRefreshViaStore(rootStore) {
+        const parsed = parseProjectPath(location.pathname);
+        const browse = parseBrowseWorkItem(location.pathname);
+        const listOk = await refreshIssueList(rootStore, parsed);
+        const detailOk = await refreshIssueDetails(rootStore, parsed, browse);
+        return listOk || detailOk;
       }
 
       function navigateAwayAndBack() {

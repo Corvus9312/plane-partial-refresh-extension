@@ -17,7 +17,8 @@
   `service_worker` 與 `scripts` 以兼顧 Chrome / Firefox。
 - `content.js` — content script:局部刷新邏輯 + 讀取全域 storage 跑定時/回來刷新 +
   接收 `PPR_REFRESH` 訊息。不注入 UI。刷新優先走 Plane MobX store 的
-  `fetchIssuesWithExistingPagination` / `fetchIssues`;抓不到再 navigate 跳走再跳回;
+  `fetchIssuesWithExistingPagination` / `fetchIssues`;接著重抓目前 peek / 詳情頁 /
+  已載入過描述的 work item(`issueDetail.fetchIssue`)。抓不到再 navigate 跳走再跳回;
   再不行 `location.reload()`。
 - `background.js` — 點圖示時對 Plane 分頁 `tabs.sendMessage({ type: "PPR_REFRESH" })`;
   非 Plane 頁則 `openOptionsPage()`。
