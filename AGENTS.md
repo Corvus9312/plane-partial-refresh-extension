@@ -44,18 +44,36 @@ powershell -ExecutionPolicy Bypass -File package.ps1
 
 ## Release / 上版
 
-上 GitHub Release 時,**同時附上** `.zip` 與 `.xpi`,並在 Release 說明裡寫清楚安裝方式
-(可直接對齊或摘要 `README.md` 的「從 GitHub Release 安裝」):
+上 GitHub Release 時必做兩件事:
 
-- **`.zip`**（`package.ps1` 產出）→ **Chrome / Edge**：解壓 → `chrome://extensions` →
-  開發人員模式 →「載入未封裝項目」→ 選解壓資料夾。Chrome **不能**裝 `.xpi`，也**不能**
-  雙擊 zip 安裝。
-- **`.xpi`**（把同一份 zip 上傳 AMO self-distribution / unlisted 簽署後下載）→ **Firefox**：
-  用 Firefox 開啟該 `.xpi`（拖進視窗或「開啟檔案」）即可永久安裝。Firefox 臨時載入則仍可
-  選資料夾裡的 `manifest.json`。
-- 開頭加一句：**`.xpi` 只給 Firefox，`.zip` 給 Chrome/Edge，兩邊不相通。**
+1. **附件**：同時附上 `.zip` 與 `.xpi`（有簽好的 xpi 再發；還沒拿到 xpi 就先不要發缺檔的 Release）。
+2. **Release 說明必須含「檔案怎麼用」**，不能只寫變更摘要。舊版 Release 常漏這段，之後每一版都要有。
 
-Release body 建議至少包含上述 zip / xpi 使用步驟，不要只貼變更說明卻沒寫怎麼裝。
+可對齊或摘要 `README.md` 的「從 GitHub Release 安裝」。Release body **建議直接用下面範本**（變更說明可接在後面）:
+
+```markdown
+`.xpi` 只給 Firefox，`.zip` 給 Chrome/Edge，兩邊不相通。
+
+### Chrome / Edge（用 `.zip`）
+1. 下載 Release 的 `.zip`，解壓到固定位置
+2. 開啟 `chrome://extensions`（Edge：`edge://extensions`）
+3. 打開「開發人員模式」→「載入未封裝項目」→ 選**解壓後的資料夾**
+4. 注意：不能雙擊 zip 安裝，也不能裝 `.xpi`
+
+### Firefox（用 `.xpi`）
+1. 下載 Release 的 `.xpi`（AMO 自我發布簽署後的檔）
+2. 用 Firefox 開啟該檔（拖進視窗，或「檔案 → 開啟檔案」）完成永久安裝
+3. 開發／未簽署時仍可用 `about:debugging#/runtime/this-firefox` 臨時載入 `manifest.json`
+
+### 變更
+- （此版變更要點）
+```
+
+重點對照:
+
+- **`.zip`**（`package.ps1` 產出）→ Chrome / Edge 解壓後「載入未封裝項目」
+- **`.xpi`**（同一份 zip 上傳 AMO unlisted 簽署後下載）→ Firefox 開啟安裝
+- 開頭一定要有：**`.xpi` 只給 Firefox，`.zip` 給 Chrome/Edge，兩邊不相通。**
 
 ## 測試(換裝置或改完程式碼都要重新走一次)
 
@@ -80,5 +98,7 @@ Release body 建議至少包含上述 zip / xpi 使用步驟，不要只貼變�
 - 不要把 `web-ext-artifacts/`、任何 `.zip`、`node_modules/` commit 進去(已在 `.gitignore`)。
 - `manifest.json` 裡的 match pattern 字元(`*`)很容易在複製貼上時被吃掉,改完建議打開檔案核對。
 - 不要幫 `action` 加 `default_popup`,否則點圖示不會觸發 `onClicked` 刷新。
+- 上 GitHub Release 時 Release body **一定要**含 zip / xpi 使用教學(見上方「Release / 上版」
+  範本),不要只寫變更說明;還沒有簽署好的 `.xpi` 就先不要發缺附件的 Release。
 - repo 是 `Corvus9312/plane-partial-refresh-extension`,已設好 `origin` 遠端,commit/push 前
   照一般流程確認 diff 內容再操作。
