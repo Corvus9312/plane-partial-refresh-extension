@@ -93,6 +93,7 @@
 
         const seen = new Set();
         const jobs = [];
+        const peeksToRemount = [];
 
         function queueFetch(detailStore, workspaceSlug, projectId, issueId) {
           if (!detailStore || !workspaceSlug || !projectId || !issueId) return;
@@ -102,13 +103,57 @@
           jobs.push(Promise.resolve(detailStore.fetchIssue(workspaceSlug, projectId, issueId)));
         }
 
-        const peek = detail.peekIssue;
-        if (peek) queueFetch(detail, peek.workspaceSlug, peek.projectId, peek.issueId);
+        function rememberPeek(detailStore, peek) {
+          if (!detailStore || !peek || !peek.issueId) return;
+          peeksToRemount.push({
+            detailStore,
+            peek: {
+              workspaceSlug: peek.workspaceSlug,
+              projectId: peek.projectId,
+              issueId: peek.issueId,
+              nestingLevel: peek.nestingLevel,
+              isArchived: peek.isArchived,
+            },
+          });
+          queueFetch(detailStore, peek.workspaceSlug, peek.projectId, peek.issueId);
+        }
 
+        // 側欄內容視窗(peek)開著時一定要重抓,否則描述編輯器會留在本機舊內容
+        rememberPeek(detail, detail.peekIssue);
         const epicDetail = issueRoot.epicDetail;
-        if (epicDetail && epicDetail.peekIssue) {
-          const p = epicDetail.peekIssue;
-          queueFetch(epicDetail, p.workspaceSlug, p.projectId, p.issueId);
+        if (epicDetail) rememberPeek(epicDetail, epicDetail.peekIssue);
+
+        // 從畫面上的 /browse/PROJ-123 連結補強偵測(有時 fiber 抓到的 store 沒帶 peekIssue)
+        if (!peeksToRemount.length && issueRoot.issues) {
+          const hrefs = Array.from(document.querySelectorAll('a[href*="/browse/"]'))
+            .map((a) => a.getAttribute("href") || "");
+          for (const href of hrefs) {
+            const m = href.match(/\\/browse\\/([^/?#]+)/);
+            if (!m) continue;
+            const ident = decodeURIComponent(m[1]);
+            const issueId =
+              (typeof issueRoot.issues.getIssueIdByIdentifier === "function" &&
+                issueRoot.issues.getIssueIdByIdentifier(ident)) ||
+              (issueRoot.issues.issuesIdentifierMap && issueRoot.issues.issuesIdentifierMap[ident]);
+            const issue =
+              issueId && typeof issueRoot.issues.getIssueById === "function"
+                ? issueRoot.issues.getIssueById(issueId)
+                : issueId && issueRoot.issues.issuesMap
+                  ? issueRoot.issues.issuesMap[issueId]
+                  : null;
+            if (!issue || !issue.id || !issue.project_id) continue;
+            const workspaceSlug =
+              (parsed && parsed.workspaceSlug) ||
+              (browse && browse.workspaceSlug) ||
+              (location.pathname.match(/^\\/([^\\/]+)/) || [])[1];
+            if (!workspaceSlug) continue;
+            rememberPeek(detail, {
+              workspaceSlug,
+              projectId: issue.project_id,
+              issueId: issue.id,
+            });
+            break;
+          }
         }
 
         if (browse && typeof detail.fetchIssueWithIdentifier === "function") {
@@ -125,13 +170,25 @@
         const fallbackProjectId = parsed && parsed.projectId;
         eachIssueInMap(issueRoot.issues && issueRoot.issues.issuesMap, (it) => {
           if (!it || !it.id) return;
-          if (it.description_html === undefined || it.description_html === null) return;
+          // 只重抓「真正載入過描述」的項目;空字串多半是列表殘值,不算
+          if (!it.description_html || it.description_html === " " || it.description_html === "<p></p>") return;
           queueFetch(detail, workspaceSlug, it.project_id || fallbackProjectId, it.id);
         });
 
         if (!jobs.length) return false;
-        log("refresh issue details:", seen.size, "item(s)");
+        log("refresh issue details:", seen.size, "item(s); peek remount:", peeksToRemount.length);
         await Promise.allSettled(jobs);
+
+        // 描述編輯器只在 mount / initialValue 切換時吃新資料;關再開 peek 強制重掛
+        for (const { detailStore, peek } of peeksToRemount) {
+          if (typeof detailStore.setPeekIssue !== "function") continue;
+          detailStore.setPeekIssue(undefined);
+        }
+        await new Promise((r) => setTimeout(r, 50));
+        for (const { detailStore, peek } of peeksToRemount) {
+          if (typeof detailStore.setPeekIssue !== "function") continue;
+          detailStore.setPeekIssue(peek);
+        }
         return true;
       }
 
@@ -256,6 +313,11 @@
   let lastRefreshAt = 0;
   let wasAway = false;
 
+  // 定時 / 回來自動刷新只在 work items 頁跑;手動點圖示仍可在其它 Plane 頁觸發
+  function isWorkItemsPage() {
+    return /^\/[^/]+\/projects\/[0-9a-fA-F-]+\/issues(?:\/|$)/.test(location.pathname);
+  }
+
   function stopTimer() {
     if (timerId) {
       clearInterval(timerId);
@@ -269,8 +331,8 @@
     timerId = setInterval(() => {
       countdown -= 1;
       if (countdown <= 0) {
-        triggerPartialRefresh();
         countdown = seconds;
+        if (isWorkItemsPage()) triggerPartialRefresh();
       }
     }, 1000);
   }
@@ -321,6 +383,7 @@
     if (document.hidden) return;
     if (!wasAway) return;
     wasAway = false;
+    if (!isWorkItemsPage()) return;
     const now = Date.now();
     if (now - lastRefreshAt < minGapSeconds * 1000) return;
     triggerPartialRefresh();

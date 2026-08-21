@@ -18,8 +18,9 @@
 - `content.js` — content script:局部刷新邏輯 + 讀取全域 storage 跑定時/回來刷新 +
   接收 `PPR_REFRESH` 訊息。不注入 UI。刷新優先走 Plane MobX store 的
   `fetchIssuesWithExistingPagination` / `fetchIssues`;接著重抓目前 peek / 詳情頁 /
-  已載入過描述的 work item(`issueDetail.fetchIssue`)。抓不到再 navigate 跳走再跳回;
-  再不行 `location.reload()`。
+  已載入過描述的 work item(`issueDetail.fetchIssue`);目前開著的 peek 側欄會先重抓再
+  短暫關開以強制描述編輯器重掛。抓不到再 navigate 跳走再跳回;再不行 `location.reload()`。
+  定時 / 回來自動刷新只在 work items 頁(`/projects/.../issues`)觸發;手動點圖示不受限。
 - `background.js` — 點圖示時對 Plane 分頁 `tabs.sendMessage({ type: "PPR_REFRESH" })`;
   非 Plane 頁則 `openOptionsPage()`。
 - `options.html` / `options.js` — 設定頁。storage key:`autoRefresh`、`focusRefresh`(全域)。
@@ -67,10 +68,11 @@ Release body 建議至少包含上述 zip / xpi 使用步驟，不要只貼變�
 1. 頁面上**沒有**懸浮控制條;Console 沒有紅字 error
 2. 點工具列擴充套件圖示 → 觸發局部刷新(Network 有重新打 API,盡不整頁重載 JS/CSS)
 3. 非 Plane 分頁點圖示 → 應打開選項頁
-4. 選項頁開關「定時刷新」後,Plane 分頁會依間隔自動刷新;改間隔會重設節奏
-5. 「回來自動刷新」勾選後:切走再回來時,若距上次刷新(含手動/定時)未滿設定秒數(預設 60)**不該**刷新;滿了才刷一次
-6. reload 分頁後選項設定仍生效(全域 `chrome.storage.local`)
-7. 抓不到 store / router 時要能 fallback,不能拋錯卡死
+4. 選項頁開關「定時刷新」後,在 work items 頁(`/projects/.../issues`)會依間隔自動刷新;其它 Plane 頁時間到也不該刷;改間隔會重設節奏
+5. 「回來自動刷新」勾選後:切走再回來時,若不在 work items 頁**不該**刷;若距上次刷新(含手動/定時)未滿設定秒數(預設 60)**不該**刷新;滿了才刷一次
+6. 手動點圖示在非 work items 的 Plane 頁仍可刷新
+7. reload 分頁後選項設定仍生效(全域 `chrome.storage.local`)
+8. 抓不到 store / router 時要能 fallback,不能拋錯卡死
 
 ## 給 agent 的提醒
 
